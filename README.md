@@ -1,4 +1,5 @@
 [logo]: https://github.com/qcri/TrafQ/raw/master/trafqlogo.png
+![TrafQ Logo][logo]
 # TrafQ
 TrafQ is a visual framework based on Open AI Gym environments and baseline algorithms for Traffic Light control optimization with Reinforcement Learning. Environments simulate real world road networks and traffic.
 
