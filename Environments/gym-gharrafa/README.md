@@ -8,10 +8,10 @@
 
 Clone using
 ```bash
-git clone https://github.com/qcri/gym-gharrafa.git
+git clone https://github.com/qcri/TrafQ.git
 ```
 
-After `cd gym-gharrafa`, install using
+After `cd Environments/gym-gharrafa`, install using
 ```bash
 sudo pip3 install -e .
 ```
