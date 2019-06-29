@@ -23,14 +23,13 @@ class GreenWaveEnv(gym.Env):
     def __init__(self,oneway=True,uneven=False):
 
         self._seed = 31337
-        self.GUI = GUI
-        self.Play = Play
+
         self.PHASES = {
         }
 
         #how many SUMO seconds before next step (observation/action)
         self.OBSERVEDPERIOD = 10
-        self.SUMOSTEP = 0.5
+        self.SUMOSTEP = 1.0
 
         #In this version the observation space is the set of sensors
         self.observation_space = spaces.Box(low=0, high=255, shape=(1,68), dtype=np.uint8)
@@ -58,8 +57,8 @@ class GreenWaveEnv(gym.Env):
         else:
             sumoBinary = set_sumo_home.sumoBinary
 
-        self.argslist = [sumoBinary, "-c", module_path+"/assets/tl.sumocfg",
-                             "--collision.action", "remove",
+        self.argslist = [sumoBinary, "-c", module_path+"/assets/greenWave.sumocfg",
+                             "--collision.action", "teleport",
             "--step-length", str(self.SUMOSTEP), "-S", "--time-to-teleport", "-1",
             "--collision.mingap-factor", "0",
             "--collision.check-junctions", "true", "--no-step-log"]
