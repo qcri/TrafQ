@@ -32,10 +32,35 @@ class GreenWaveEnv(gym.Env):
         self.SUMOSTEP = 1.0
 
         #In this version the observation space is the set of sensors
-        self.observation_space = spaces.Box(low=0, high=255, shape=(1,68), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(1,24), dtype=np.uint8)
+
+        self.detectorIDs = ["e2Detector_--gneE13_0_14",
+        "e2Detector_--gneE14_0_17",
+        "e2Detector_--gneE15_0_20",
+        "e2Detector_--gneE16_0_23",
+        "e2Detector_-gneE13_0_4",
+        "e2Detector_-gneE14_0_7",
+        "e2Detector_-gneE15_0_9",
+        "e2Detector_-gneE16_0_11",
+        "e2Detector_gneE13_0_5",
+        "e2Detector_gneE14_0_6",
+        "e2Detector_gneE15_0_8",
+        "e2Detector_gneE16_0_10",
+        "e2Detector_gneE20_0_0",
+        "e2Detector_gneE21_0_1",
+        "e2Detector_gneE21_0_13",
+        "e2Detector_gneE22_0_16",
+        "e2Detector_gneE22_0_2",
+        "e2Detector_gneE23_0_19",
+        "e2Detector_gneE23_0_3",
+        "e2Detector_gneE24_0_22",
+        "e2Detector_gneE35_0_12",
+        "e2Detector_gneE38_0_15",
+        "e2Detector_gneE39_0_22",
+        "e2Detector_gneE41_0_23"]
 
         #Set action space as the set of possible phases
-        self.action_space = spaces.Discrete(11)
+        self.action_space = spaces.Discrete(16)
 
         self.spec = {}
 
