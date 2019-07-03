@@ -22,10 +22,12 @@ module_path = os.path.dirname(__file__)
 class GreenWaveEnv(gym.Env):
     def __init__(self,oneway=True,uneven=False):
 
+        self.GUI = True
+        self.tlsID = "gneJ37"
+
         self._seed = 31337
 
-        self.PHASES = {
-        }
+        self.PHASES = [0,1]
 
         #how many SUMO seconds before next step (observation/action)
         self.OBSERVEDPERIOD = 10
@@ -34,7 +36,7 @@ class GreenWaveEnv(gym.Env):
         #In this version the observation space is the set of sensors
         self.observation_space = spaces.Box(low=0, high=255, shape=(1,24), dtype=np.uint8)
 
-        self.detectorIDs = ["e2Detector_--gneE13_0_14",
+        self.DETECTORS = ["e2Detector_--gneE13_0_14",
         "e2Detector_--gneE14_0_17",
         "e2Detector_--gneE15_0_20",
         "e2Detector_--gneE16_0_23",
@@ -59,6 +61,31 @@ class GreenWaveEnv(gym.Env):
         "e2Detector_gneE39_0_22",
         "e2Detector_gneE41_0_23"]
 
+        # DETDICT FORMAT EXAMPLE: self.DETDICT[(IntersectionID,DirectionID)]["in"] = ["e2Detector_gneE23_0_3","e2Detector_gneE24_0_22"]
+        self.DETDICT = {
+        (0,0): {"in":["e2Detector_gneE20_0_0"],"out":["e2Detector_gneE21_0_13"]},
+        (1,0): {"in":["e2Detector_gneE21_0_1"],"out":["e2Detector_gneE22_0_16"]},
+        (2,0): {"in":["e2Detector_gneE22_0_2"],"out":["e2Detector_gneE23_0_19"]},
+        (3,0): {"in":["e2Detector_gneE23_0_3"],"out":["e2Detector_gneE24_0_22"]},
+
+        (0,1): {"in":["e2Detector_gneE13_0_5"],"out":["e2Detector_--gneE13_0_14"]},
+        (1,1): {"in":["e2Detector_gneE14_0_6"],"out":["e2Detector_--gneE14_0_17"]},
+        (2,1): {"in":["e2Detector_gneE15_0_8"],"out":["e2Detector_--gneE15_0_20"]},
+        (3,1): {"in":["e2Detector_gneE16_0_10"],"out":["e2Detector_--gneE16_0_23"]},
+
+        (0,2): {"in":["e2Detector_-gneE13_0_4"],"out":["e2Detector_gneE35_0_12"]},
+        (1,2): {"in":["e2Detector_-gneE14_0_7"],"out":["e2Detector_gneE38_0_15"]},
+        (2,2): {"in":["e2Detector_-gneE15_0_9"],"out":["e2Detector_gneE39_0_22"]},
+        (3,2): {"in":["e2Detector_-gneE16_0_11"],"out":["e2Detector_gneE41_0_23"]}
+        }
+
+
+
+
+        self.EDGESmain = ["gneE20","gneE21","gneE22","gneE23","gneE24"]
+
+        self.EDGES = []
+
         #Set action space as the set of possible phases
         self.action_space = spaces.Discrete(16)
 
@@ -70,6 +97,22 @@ class GreenWaveEnv(gym.Env):
         self.timestep = 0
 
         self._configure_environment()
+
+    def get_pressure(IntersectionID):
+        directions = [k[1] for k in self.DETDICT.keys() if k[0]==IntersectionID]
+
+        pressure = 0.0
+        for direction in directions:
+            inDets = self.DETDICT[IntersectionID,direction]["in"]
+            inPressure = np.sum([ self.conn.lanearea.getLastStepVehicleNumber(detID) for detID in inDets])
+
+            outDets = self.DETDICT[IntersectionID,direction]["out"]
+            outPressure = np.sum([ self.conn.lanearea.getLastStepVehicleNumber(detID) for detID in outDets])
+
+            pressure += inPressure - outPressure
+
+        return pressure
+
 
     def seed(self,seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -88,20 +131,14 @@ class GreenWaveEnv(gym.Env):
             "--collision.mingap-factor", "0",
             "--collision.check-junctions", "true", "--no-step-log"]
 
-        if self.Play:
-            #self.argslist.append("--game")
-            self.argslist.append("--window-size")
-            self.argslist.append("1000,1000")
-
-        # if self.GUI:
-        #     self.arglist.append("--gui-settings-file")
-        #     self.arglist.append(module_path+"/assets/viewsettings.xml")
-
         traci.start(self.argslist,label=self.runcode)
 
         self.conn = traci.getConnection(self.runcode)
 
         time.sleep(5) # Wait for server to startup
+
+        #get list of all edges
+        self.EDGES = self.conn.edge.getIDList()
 
     def __del__(self):
         self.conn.close()
@@ -110,46 +147,54 @@ class GreenWaveEnv(gym.Env):
         self.conn.close()
 
     def _selectPhase(self,target):
-        target = self.PHASES[target]
-        current_program = self.conn.trafficlight.getProgram(self.tlsID)
-        if " to " in current_program:
-            source = current_program.split(" to ")[1]
-        else:
-            #we are in another program like scat or 0... just change from N
-            source = "G N"
-            if source == target:
-                source = "G S"
-        if source == target and " to " in current_program:
-            #ensure that the phase will not be changed automatically by the
-            #program, by adding some time
-            self.conn.trafficlight.setPhase(self.tlsID, 1)
+        AllPhasesIncludingYellow  = 4
+        #target = self.PHASES[target]
+        source = self.conn.trafficlight.getPhase(self.tlsID)
+        if source == target:
             self.conn.trafficlight.setPhaseDuration(self.tlsID,60.0)
             return False
         else:
-            transition_program = "from %s to %s" % (source,target)
-            self.conn.trafficlight.setProgram(self.tlsID, transition_program)
-            self.conn.trafficlight.setPhase(self.tlsID, 0)
+            self.conn.trafficlight.setPhase(self.tlsID,(source+1)%4)
             return True
 
     def _observeState(self):
         reward = 0.0
-        obs = []
+
+        self.timestep +=1
+
+        number = [np.float32(self.conn.lanearea.getLastStepVehicleNumber(detID)) for detID in self.DETECTORS]
+        #speed = [np.float32(self.conn.lanearea.getLastStepMeanSpeed(detID)) for detID in self.DETECTORS]
+        #halting = [np.float32(self.conn.lanearea.getLastStepHaltingNumber(detID)) for detID in self.DETECTORS]
+        #obs = np.array(number + speed + halting)
+        obs = np.array(number)
+
+        # Note: edge.getWaitingTime(edgeID) Returns the sum of the waiting time of all vehicles currently
+        # on that edge edgeID
+        waitingALL = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGES])
+        waitingMain = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGESmain])
+        #reward = -np.log(waitingMain) if waitingMain > 0 else 0
+
+        #should have an array of intersection instead, this is a test with only the first IntersectionID
+        intID = 0
+        reward = - get_pressure(indID)
+
         measures = {}
         #TODO: build observation
         return obs,reward,measures
 
     def step(self, action):
         self._selectPhase(action)
+
+        #self.conn.simulation.step(time=10.0)
+        self.conn.simulationStep()
         #get state and reward
         obs,reward,measures = self._observeState()
+        episode_over = self.timestep > 360
+        if episode_over:
+            self.conn.load(self.argslist[1:])
+            self.timestep = 0
         return obs, reward, episode_over, measures
 
     def reset(self):
         self.timestep = 0
-        #go back to the first step of the return
-        if self.Play != None and self.Play != "action":
-            self.conn.trafficlight.setProgram(self.tlsID, self.Play)
-        if self.Play == "action" and self.GUI:
-            self.conn.gui.screenshot(viewID='View #0',filename="/home/srizzo/phase_recording/%s_last_screen.png" % self.runcode)
-
         return self._observeState()[0]
