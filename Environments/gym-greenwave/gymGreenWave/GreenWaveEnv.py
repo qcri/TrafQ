@@ -23,7 +23,12 @@ class GreenWaveEnv(gym.Env):
     def __init__(self,oneway=True,uneven=False):
 
         self.GUI = True
-        self.tlsID = "gneJ37"
+        self.tls = {
+        0:"gneJ37",
+        1:"gneJ38",
+        2:"gneJ39",
+        3:"gneJ40"
+        }
 
         self._seed = 31337
 
@@ -61,6 +66,7 @@ class GreenWaveEnv(gym.Env):
         "e2Detector_gneE39_0_22",
         "e2Detector_gneE41_0_23"]
 
+        self.intersections = [0,1,2,3]
         # DETDICT FORMAT EXAMPLE: self.DETDICT[(IntersectionID,DirectionID)]["in"] = ["e2Detector_gneE23_0_3","e2Detector_gneE24_0_22"]
         self.DETDICT = {
         (0,0): {"in":["e2Detector_gneE20_0_0"],"out":["e2Detector_gneE21_0_13"]},
@@ -98,7 +104,7 @@ class GreenWaveEnv(gym.Env):
 
         self._configure_environment()
 
-    def get_pressure(IntersectionID):
+    def _getPressure(self,IntersectionID):
         directions = [k[1] for k in self.DETDICT.keys() if k[0]==IntersectionID]
 
         pressure = 0.0
@@ -146,19 +152,24 @@ class GreenWaveEnv(gym.Env):
     def closeconn(self):
         self.conn.close()
 
-    def _selectPhase(self,target):
-        AllPhasesIncludingYellow  = 4
-        #target = self.PHASES[target]
-        source = self.conn.trafficlight.getPhase(self.tlsID)
-        if source == target:
-            self.conn.trafficlight.setPhaseDuration(self.tlsID,60.0)
-            return False
-        else:
-            self.conn.trafficlight.setPhase(self.tlsID,(source+1)%4)
-            return True
+    def _getActionFromPhase(self,phase):
+        #if the tl is transitioning consider the next phase
+        return {0:0, 1:1, 2:1, 3:0}[phase]
+
+    def _selectPhase(self,targets):
+        for i,action in enumerate(targets):
+            lastPhase = self.conn.trafficlight.getPhase(self.tls[i])
+            lastAction = self._getActionFromPhase(lastPhase)
+            if action != lastAction:
+                self.conn.trafficlight.setPhase(self.tls[i],(lastPhase+1)%4)
+            elif lastPhase%2==0:
+                #extend the phase if it's not yellow (the length in tls definition may not be long
+                #enough, thus it may skip to another phase by itself otherwise)
+                self.conn.trafficlight.setPhaseDuration(self.tls[i],60.0)
+
 
     def _observeState(self):
-        reward = 0.0
+        reward = [0.0 for i in self.intersections]
 
         self.timestep +=1
 
@@ -176,7 +187,11 @@ class GreenWaveEnv(gym.Env):
 
         #should have an array of intersection instead, this is a test with only the first IntersectionID
         intID = 0
-        reward = - get_pressure(indID)
+
+        #In multi-agent with shared reward we should use sum of all the local rewards
+        #totalpressure = np.sum([getpressure(i) for i in self.intersections])
+        #reward = -totalpressure
+        reward = [self._getPressure(i) for i in self.intersections]
 
         measures = {}
         #TODO: build observation
