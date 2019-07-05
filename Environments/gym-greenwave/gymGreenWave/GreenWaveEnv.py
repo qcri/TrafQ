@@ -173,20 +173,34 @@ class GreenWaveEnv(gym.Env):
 
         self.timestep +=1
 
-        number = [np.float32(self.conn.lanearea.getLastStepVehicleNumber(detID)) for detID in self.DETECTORS]
+        #multi agent observation
+        observations = []
+        for i in self.intersections:
+            idets = []
+            for k in self.DETDICT.keys():
+                if k[0] == i:
+                    idets+=self.DETDICT[k]["in"]
+                    idets+=self.DETDICT[k]["out"]
+            #dets = [self.DETDICT[k]["in"] for k in self.DETDICT.keys() if k[0] == i]
+            #dets += [self.DETDICT[k]["out"] for k in self.DETDICT.keys() if k[0] == i]
+            obs = [np.float32(self.conn.lanearea.getLastStepVehicleNumber(detID)) for detID in idets ]
+            lastPhase = self.conn.trafficlight.getPhase(self.tls[i])
+            lastAction = self._getActionFromPhase(lastPhase)
+            obs.append(lastAction)
+            observations.append(obs)
+
+
+        #number = [np.float32(self.conn.lanearea.getLastStepVehicleNumber(detID)) for detID in self.DETECTORS]
         #speed = [np.float32(self.conn.lanearea.getLastStepMeanSpeed(detID)) for detID in self.DETECTORS]
         #halting = [np.float32(self.conn.lanearea.getLastStepHaltingNumber(detID)) for detID in self.DETECTORS]
         #obs = np.array(number + speed + halting)
-        obs = np.array(number)
+        #obs = np.array(number)
 
         # Note: edge.getWaitingTime(edgeID) Returns the sum of the waiting time of all vehicles currently
         # on that edge edgeID
-        waitingALL = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGES])
-        waitingMain = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGESmain])
+        #waitingALL = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGES])
+        #waitingMain = np.sum([self.conn.edge.getWaitingTime(edgeID) for edgeID in self.EDGESmain])
         #reward = -np.log(waitingMain) if waitingMain > 0 else 0
-
-        #should have an array of intersection instead, this is a test with only the first IntersectionID
-        intID = 0
 
         #In multi-agent with shared reward we should use sum of all the local rewards
         #totalpressure = np.sum([getpressure(i) for i in self.intersections])
@@ -195,7 +209,7 @@ class GreenWaveEnv(gym.Env):
 
         measures = {}
         #TODO: build observation
-        return obs,reward,measures
+        return observations,reward,measures
 
     def step(self, action):
         self._selectPhase(action)
