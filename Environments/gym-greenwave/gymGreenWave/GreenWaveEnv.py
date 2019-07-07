@@ -20,9 +20,9 @@ import traci
 module_path = os.path.dirname(__file__)
 
 class GreenWaveEnv(gym.Env):
-    def __init__(self,oneway=True,uneven=False):
+    def __init__(self,oneway=True,uneven=False,GUI=True):
 
-        self.GUI = True
+        self.GUI = GUI
         self.tls = {
         0:"gneJ37",
         1:"gneJ38",
