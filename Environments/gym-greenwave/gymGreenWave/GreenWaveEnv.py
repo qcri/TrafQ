@@ -216,7 +216,7 @@ class GreenWaveEnv(gym.Env):
         self.timestep +=1
         #get state and reward
         obs,reward,measures = self._observeState()
-        episode_over = self.timestep > 360
+        episode_over = self.timestep >= (10000000-1)
         if episode_over:
             self.conn.load(self.argslist[1:])
             self.timestep = 0
