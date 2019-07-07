@@ -171,8 +171,6 @@ class GreenWaveEnv(gym.Env):
     def _observeState(self):
         reward = [0.0 for i in self.intersections]
 
-        self.timestep +=1
-
         #multi agent observation
         observations = []
         for i in self.intersections:
@@ -213,9 +211,9 @@ class GreenWaveEnv(gym.Env):
 
     def step(self, action):
         self._selectPhase(action)
-
         #self.conn.simulation.step(time=10.0)
         self.conn.simulationStep()
+        self.timestep +=1
         #get state and reward
         obs,reward,measures = self._observeState()
         episode_over = self.timestep > 360
