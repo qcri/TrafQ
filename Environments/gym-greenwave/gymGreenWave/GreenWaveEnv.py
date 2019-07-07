@@ -203,7 +203,7 @@ class GreenWaveEnv(gym.Env):
         #In multi-agent with shared reward we should use sum of all the local rewards
         #totalpressure = np.sum([getpressure(i) for i in self.intersections])
         #reward = -totalpressure
-        reward = [self._getPressure(i) for i in self.intersections]
+        reward = [-self._getPressure(i) for i in self.intersections]
 
         measures = {}
         #TODO: build observation
