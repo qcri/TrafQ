@@ -20,7 +20,7 @@ import traci
 module_path = os.path.dirname(__file__)
 
 class GreenWaveEnv(gym.Env):
-    def __init__(self,oneway=True,uneven=False,GUI=True):
+    def __init__(self,oneway=True,uneven=False,GUI=True,minlength=1):
 
         self.GUI = GUI
         self.tls = {
@@ -29,6 +29,11 @@ class GreenWaveEnv(gym.Env):
         2:"gneJ39",
         3:"gneJ40"
         }
+
+        steps_since_last_change = len(self.tls.keys()) * [1]
+
+        #used to force waiting in same phase if has not lasted enough
+        self.minlength = 1
 
         self._seed = 31337
 
@@ -84,9 +89,6 @@ class GreenWaveEnv(gym.Env):
         (2,2): {"in":["e2Detector_-gneE15_0_9"],"out":["e2Detector_gneE39_0_22"]},
         (3,2): {"in":["e2Detector_-gneE16_0_11"],"out":["e2Detector_gneE41_0_23"]}
         }
-
-
-
 
         self.EDGESmain = ["gneE20","gneE21","gneE22","gneE23","gneE24"]
 
@@ -160,7 +162,7 @@ class GreenWaveEnv(gym.Env):
         for i,action in enumerate(targets):
             lastPhase = self.conn.trafficlight.getPhase(self.tls[i])
             lastAction = self._getActionFromPhase(lastPhase)
-            if action != lastAction:
+            if action != lastAction and self.steps_since_last_change[i]>= self.minlength:
                 self.conn.trafficlight.setPhase(self.tls[i],(lastPhase+1)%4)
             elif lastPhase%2==0:
                 #extend the phase if it's not yellow (the length in tls definition may not be long
@@ -213,10 +215,11 @@ class GreenWaveEnv(gym.Env):
         self._selectPhase(action)
         #self.conn.simulation.step(time=10.0)
         self.conn.simulationStep()
+        self.steps_since_last_change = [x+1 for x in self.steps_since_last_change]
         self.timestep +=1
         #get state and reward
         obs,reward,measures = self._observeState()
-        episode_over = self.timestep >= (10000000-1)
+        episode_over = self.timestep >= (360000-1)
         if episode_over:
             self.conn.load(self.argslist[1:])
             self.timestep = 0

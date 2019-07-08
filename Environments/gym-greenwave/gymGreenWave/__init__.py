@@ -15,3 +15,9 @@ register(
     entry_point='gymGreenWave:GreenWaveEnv',
     kwargs={'oneway' : True, 'uneven': False, 'GUI': False},
 )
+
+register(
+    id='gymGreenWave-v1',
+    entry_point='gymGreenWave:GreenWaveEnv',
+    kwargs={'oneway' : True, 'uneven': False, 'GUI': False, 'minlength':8},
+)
