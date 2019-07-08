@@ -164,6 +164,7 @@ class GreenWaveEnv(gym.Env):
             lastAction = self._getActionFromPhase(lastPhase)
             if action != lastAction and self.steps_since_last_change[i]>= self.minlength:
                 self.conn.trafficlight.setPhase(self.tls[i],(lastPhase+1)%4)
+                self.steps_since_last_change[i]=0
             elif lastPhase%2==0:
                 #extend the phase if it's not yellow (the length in tls definition may not be long
                 #enough, thus it may skip to another phase by itself otherwise)
