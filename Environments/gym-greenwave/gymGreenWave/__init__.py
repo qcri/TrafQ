@@ -17,7 +17,7 @@ register(
 )
 
 register(
-    id='gymGreenWave-v1',
+    id='gymGreenWave-v2',
     entry_point='gymGreenWave:GreenWaveEnv',
     kwargs={'oneway' : True, 'uneven': False, 'GUI': False, 'minlength':8},
 )
