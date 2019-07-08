@@ -20,7 +20,7 @@ import traci
 module_path = os.path.dirname(__file__)
 
 class GreenWaveEnv(gym.Env):
-    def __init__(self,oneway=True,uneven=False,GUI=True,minlength=1):
+    def __init__(self,oneway=True,uneven=False,GUI=True,minlength=1,macrostep=1):
 
         self.GUI = GUI
         self.tls = {
@@ -34,6 +34,9 @@ class GreenWaveEnv(gym.Env):
 
         #used to force waiting in same phase if has not lasted enough
         self.minlength = 1
+
+        #used to make x micro steps in sumo, while it is only one step from the agent point of view
+        self.macrostep=macrostep
 
         self._seed = 31337
 
@@ -215,9 +218,10 @@ class GreenWaveEnv(gym.Env):
     def step(self, action):
         self._selectPhase(action)
         #self.conn.simulation.step(time=10.0)
-        self.conn.simulationStep()
-        self.steps_since_last_change = [x+1 for x in self.steps_since_last_change]
-        self.timestep +=1
+        for i in range(self.macrostep):
+            self.conn.simulationStep()
+            self.steps_since_last_change = [x+1 for x in self.steps_since_last_change]
+            self.timestep +=1
         #get state and reward
         obs,reward,measures = self._observeState()
         episode_over = self.timestep >= (360000-1)
