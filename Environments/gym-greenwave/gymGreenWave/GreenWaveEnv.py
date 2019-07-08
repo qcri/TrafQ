@@ -30,7 +30,7 @@ class GreenWaveEnv(gym.Env):
         3:"gneJ40"
         }
 
-        steps_since_last_change = len(self.tls.keys()) * [1]
+        self.steps_since_last_change = len(self.tls.keys()) * [1]
 
         #used to force waiting in same phase if has not lasted enough
         self.minlength = 1
