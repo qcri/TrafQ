@@ -20,7 +20,7 @@ import traci
 module_path = os.path.dirname(__file__)
 
 class GreenWaveEnv(gym.Env):
-    def __init__(self,oneway=True,uneven=False,GUI=True,minlength=1,macrostep=1):
+    def __init__(self,oneway=True,uneven=False,GUI=True,minlength=1,macrostep=1,minsteps=1):
 
         self.GUI = GUI
         self.tls = {
@@ -32,8 +32,12 @@ class GreenWaveEnv(gym.Env):
 
         self.steps_since_last_change = len(self.tls.keys()) * [1]
 
-        #used to force waiting in same phase if has not lasted enough
-        self.minlength = 1
+        #used to force waiting in same phase if has not lasted enough, the action has no effect
+        self.minlength = minlength
+
+        #used to force waiting in same phase if has not lasted enough, the action is taken after
+        #at least minsteps are past in the last phase
+        self.minsteps = minsteps
 
         #used to make x micro steps in sumo, while it is only one step from the agent point of view
         self.macrostep=macrostep
@@ -166,6 +170,11 @@ class GreenWaveEnv(gym.Env):
             lastPhase = self.conn.trafficlight.getPhase(self.tls[i])
             lastAction = self._getActionFromPhase(lastPhase)
             if action != lastAction and self.steps_since_last_change[i]>= self.minlength:
+                while self.steps_since_last_change[i] < self.minsteps:
+                    #if min steps requirement is set, do other steps until it's satisfied
+                    self.conn.simulationStep()
+                    self.steps_since_last_change = [x+1 for x in self.steps_since_last_change]
+                    self.timestep +=1
                 self.conn.trafficlight.setPhase(self.tls[i],(lastPhase+1)%4)
                 self.steps_since_last_change[i]=0
             elif lastPhase%2==0:
